@@ -30,9 +30,27 @@ MAXNODES="${MAXNODES:-6}"
 MACHINE="${MACHINE:-n2-standard-4}"
 CHANNEL="${CHANNEL:-regular}"
 
-gcloud beta container clusters create "${CLUSTER}" \
+gcloud services enable osconfig.googleapis.com
+gcloud services enable trafficdirector.googleapis.com
+
+PROJECT=`gcloud config get-value project`
+gcloud projects add-iam-policy-binding ${PROJECT} \
+   --member serviceAccount:${SERVICE_ACCOUNT_EMAIL} \
+   --role roles/compute.networkViewer
+
+
+gcloud container clusters create "${CLUSTER}" \
   --release-channel "${CHANNEL}" \
   --zone "${ZONE}" --num-nodes "${NODES}" --machine-type "${MACHINE}" \
-  --enable-autoscaling --min-nodes "${NODES}" --max-nodes "${MAXNODES}" \
+  --scopes=https://www.googleapis.com/auth/cloud-platform \
   --enable-ip-alias \
-  --addons CloudRun,HttpLoadBalancing --enable-stackdriver-kubernetes
+
+gcloud container clusters get-credentials traffic-director-cluster \
+    --zone "${ZONE}"
+
+wget https://storage.googleapis.com/traffic-director/td-sidecar-injector.tgz
+tar -xzvf td-sidecar-injector.tgz
+cd td-sidecar-injector
+
+# continue: https://cloud.google.com/traffic-director/docs/set-up-gke-pods-auto
+
